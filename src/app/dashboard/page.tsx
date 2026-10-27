@@ -352,7 +352,7 @@ function DashboardContent() {
           </Link>
 
           {/* Tombol 2: Lihat Tugas */}
-          <Link href="/courses" className="group relative overflow-hidden bg-white border border-gray-200 hover:border-[#1E3A5F] text-[#1E3A5F] p-4 rounded-2xl shadow-lg hover:shadow-xl flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
+          <Link href="/dashboard/tugas" className="group relative overflow-hidden bg-white border border-gray-200 hover:border-[#1E3A5F] text-[#1E3A5F] p-4 rounded-2xl shadow-lg hover:shadow-xl flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
              <div className="bg-blue-50 p-2.5 rounded-full group-hover:bg-[#1E3A5F] group-hover:text-white transition-colors duration-300 group-hover:rotate-6"><ListTodo size={22} /></div>
             <span className="font-bold text-sm tracking-wide">Lihat Tugas</span>
           </Link>
