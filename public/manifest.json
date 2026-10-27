@@ -1,0 +1,17 @@
+{
+  "name": "KuliahHub",
+  "short_name": "KuliahHub",
+  "description": "Aplikasi web manajemen perkuliahan pribadi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1E3A5F",
+  "theme_color": "#1E3A5F",
+  "icons": [
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
