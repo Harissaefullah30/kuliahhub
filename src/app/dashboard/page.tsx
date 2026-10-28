@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { LogOut, BookOpen, Search, FolderOpen, ChevronDown, ChevronUp, User, GraduationCap, AlertTriangle, Clock, CheckCircle2, FileText, CalendarDays, Plus, ListTodo, PieChart, IdCard, Pencil, X, Save } from 'lucide-react'
+import { LogOut, BookOpen, Search, FolderOpen, ChevronDown, ChevronUp, User, GraduationCap, AlertTriangle, Clock, CheckCircle2, FileText, CalendarDays, Plus, ListTodo, PieChart, IdCard, Pencil, X, Save, Link as LinkIcon } from 'lucide-react'
 import Link from 'next/link'
 
 type Course = {
@@ -247,15 +247,76 @@ function DashboardContent() {
         {/* GRID RINGKASAN: Progress, Tugas Aktif/Selesai, dan Jadwal Hari Ini */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           
-          {/* 1. Progress Tugas */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-5 relative overflow-hidden">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center bg-blue-50 text-[#1E3A5F] shrink-0"><PieChart size={24} /></div>
-            <div className="flex-1">
-              <div className="flex justify-between items-end mb-2"><p className="text-sm font-bold text-gray-600">Progress Tugas</p><p className="text-lg font-extrabold text-[#1E3A5F]">{progressPercent}%</p></div>
-              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden"><div className="bg-gradient-to-r from-[#4A90D9] to-[#1E3A5F] h-2.5 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }}></div></div>
-              <p className="text-xs text-gray-400 mt-2">{completedTasksCount} Selesai dari {totalTasks} Tugas</p>
+                  {/* 1. Ringkasan Semua Tugas */}
+          <Link href="/dashboard/tugas" className="block">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md hover:border-[#4A90D9] transition-all h-full flex flex-col justify-between">
+              
+              {/* Header Card */}
+              <div className="flex justify-between items-start mb-4 z-10 relative">
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Keseluruhan</p>
+                  <h3 className="font-bold text-gray-800 text-lg">Semua Tugas</h3>
+                </div>
+                <div className="bg-blue-50 text-[#1E3A5F] p-2 rounded-lg group-hover:bg-[#1E3A5F] group-hover:text-white transition-colors">
+                  <ListTodo size={20} />
+                </div>
+              </div>
+
+              {/* Visualisasi Data (Donut Chart & Teks) */}
+              <div className="flex items-center gap-5 z-10 relative">
+                {/* Donut Chart Menggunakan SVG */}
+                <div className="relative w-20 h-20 shrink-0">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    {/* Background Circle */}
+                    <path
+                      className="text-gray-100"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    {/* Progress Circle */}
+                    <path
+                      className="text-[#4A90D9] transition-all duration-1000 ease-out"
+                      strokeDasharray={`${progressPercent}, 100`}
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center flex-col">
+                    <span className="text-lg font-extrabold text-[#1E3A5F]">{progressPercent}%</span>
+                  </div>
+                </div>
+
+                {/* Keterangan Angka */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#4A90D9]"></div>
+                    <span className="text-sm font-bold text-gray-700">{completedTasksCount} Selesai</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-gray-200"></div>
+                    <span className="text-sm font-bold text-gray-700">{activeTasksCount} Belum</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Total {totalTasks} Tugas</p>
+                </div>
+              </div>
+
+              {/* Tombol Tersembunyi yang Muncul saat Hover */}
+              <div className="mt-5 pt-3 border-t border-gray-50 flex justify-between items-center z-10 relative">
+                <span className="text-xs font-bold text-[#4A90D9] group-hover:text-[#1E3A5F] transition-colors">Lihat Semua Tugas</span>
+                <div className="bg-blue-50 text-[#4A90D9] p-1.5 rounded-md group-hover:translate-x-1 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </div>
+              </div>
+
+              {/* Dekorasi Background Abstrak */}
+              <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-blue-50 rounded-full opacity-50 pointer-events-none group-hover:scale-110 transition-transform duration-500"></div>
             </div>
-          </div>
+          </Link>
 
           {/* 2. Tugas Aktif & Selesai */}
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center gap-3">
@@ -342,8 +403,8 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Tombol Cepat (3 Kolom Sejajar) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Tombol Cepat (4 Kolom Sejajar) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           
           {/* Tombol 1: Tambah MK */}
           <Link href="/courses/add" className="group relative overflow-hidden bg-gradient-to-br from-[#1E3A5F] to-[#2E5A8A] text-white p-4 rounded-2xl shadow-[0_8px_30px_rgb(30,58,95,0.3)] hover:shadow-[0_8px_30px_rgb(30,58,95,0.5)] flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
@@ -357,7 +418,15 @@ function DashboardContent() {
             <span className="font-bold text-sm tracking-wide">Lihat Tugas</span>
           </Link>
 
-          {/* Tombol 3: Ruang Skripsi */}
+          {/* Tombol 3: Pusat Referensi (BARU) */}
+          <Link href="/dashboard/referensi" className="group relative overflow-hidden bg-white border border-gray-200 hover:border-[#1E3A5F] text-[#1E3A5F] p-4 rounded-2xl shadow-lg hover:shadow-xl flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
+             <div className="bg-indigo-50 text-indigo-600 p-2.5 rounded-full group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+              <LinkIcon size={22} />
+            </div>
+            <span className="font-bold text-sm tracking-wide">Pusat Referensi</span>
+          </Link>
+
+          {/* Tombol 4: Ruang Skripsi */}
           <Link href="/thesis" className="group relative overflow-hidden bg-white border border-gray-200 hover:border-[#1E3A5F] text-[#1E3A5F] p-4 rounded-2xl shadow-lg hover:shadow-xl flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
              <div className="bg-blue-50 p-2.5 rounded-full group-hover:bg-[#1E3A5F] group-hover:text-white transition-colors duration-300">
               <GraduationCap size={22} />

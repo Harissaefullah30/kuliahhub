@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, Plus, Download, BookOpen, Trash2, Pencil, X, Save, Clock } from 'lucide-react'
+import { ArrowLeft, Plus, Download, BookOpen, Trash2, Pencil, X, Save, Clock, Users, User as UserIcon } from 'lucide-react'
 import Link from 'next/link'
 
 type Material = {
@@ -15,6 +15,9 @@ type Material = {
   deadline: string
   status: string
   created_at: string
+  task_type: string
+  group_name: string
+  group_members: string
 }
 
 function CourseDetailContent() {
@@ -34,6 +37,12 @@ function CourseDetailContent() {
   const [content, setContent] = useState('')
   const [deadline, setDeadline] = useState('')
   const [status, setStatus] = useState('Belum Selesai')
+  
+  // State Baru untuk Individu/Kelompok
+  const [taskType, setTaskType] = useState('Individu')
+  const [groupName, setGroupName] = useState('')
+  const [groupMembers, setGroupMembers] = useState('')
+
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -65,6 +74,9 @@ function CourseDetailContent() {
     setContent('')
     setDeadline('')
     setStatus('Belum Selesai')
+    setTaskType('Individu')
+    setGroupName('')
+    setGroupMembers('')
     setFile(null)
   }
 
@@ -75,6 +87,9 @@ function CourseDetailContent() {
     setContent(mat.content || '')
     setDeadline(mat.deadline || '')
     setStatus(mat.status || 'Belum Selesai')
+    setTaskType(mat.task_type || 'Individu')
+    setGroupName(mat.group_name || '')
+    setGroupMembers(mat.group_members || '')
     setFile(null)
     setIsFormOpen(true)
   }
@@ -85,7 +100,7 @@ function CourseDetailContent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    let fileUrl = undefined // undefined = jangan ubah file lama
+    let fileUrl = undefined
 
     if (file) {
       const fileExt = file.name.split('.').pop()
@@ -105,7 +120,12 @@ function CourseDetailContent() {
 
     if (editingId) {
       // Update
-      const updateData: any = { title, type, content, deadline: deadline || null, status }
+      const updateData: any = { 
+        title, type, content, deadline: deadline || null, status,
+        task_type: (type === 'Tugas' || type === 'Ujian') ? taskType : null,
+        group_name: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupName : null,
+        group_members: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupMembers : null
+      }
       if (fileUrl) updateData.file_url = fileUrl
 
       const { error } = await supabase.from('materials').update(updateData).eq('id', editingId)
@@ -113,7 +133,10 @@ function CourseDetailContent() {
     } else {
       // Create
       const { error } = await supabase.from('materials').insert({
-        course_id: courseId, user_id: user.id, title, type, content, deadline: deadline || null, status, file_url: fileUrl || ''
+        course_id: courseId, user_id: user.id, title, type, content, deadline: deadline || null, status, file_url: fileUrl || '',
+        task_type: (type === 'Tugas' || type === 'Ujian') ? taskType : null,
+        group_name: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupName : null,
+        group_members: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupMembers : null
       })
       if (!error) { closeForm(); fetchCourseAndMaterials() } else { alert('Gagal: ' + error.message) }
     }
@@ -191,6 +214,32 @@ function CourseDetailContent() {
                 </div>
               </div>
 
+              {/* FORM TAMBAHAN: Individu / Kelompok */}
+              {(type === 'Tugas' || type === 'Ujian') && (
+                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">Kategori Pengerjaan</label>
+                    <select value={taskType} onChange={e => setTaskType(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-800">
+                      <option value="Individu">Individu (Sendiri)</option>
+                      <option value="Kelompok">Kelompok</option>
+                    </select>
+                  </div>
+                  
+                  {taskType === 'Kelompok' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Nama Kelompok</label>
+                        <input type="text" value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="Misal: Kelompok 1" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-800" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Anggota Kelompok</label>
+                        <input type="text" value={groupMembers} onChange={e => setGroupMembers(e.target.value)} placeholder="Misal: Budi, Andi, Siti" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-800" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Upload File PDF/Gambar (Opsional)</label>
                 <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-[#1E3A5F] hover:file:bg-blue-100" />
@@ -219,13 +268,21 @@ function CourseDetailContent() {
             {materials.map(mat => (
               <div key={mat.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${mat.type === 'Tugas' ? 'bg-red-50 text-red-600' : mat.type === 'Ujian' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-[#1E3A5F]'}`}>
                       {mat.type}
                     </span>
+                    
+                    {/* Badge Individu/Kelompok */}
+                    {(mat.type === 'Tugas' || mat.type === 'Ujian') && (
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${mat.task_type === 'Kelompok' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                        {mat.task_type || 'Individu'}
+                      </span>
+                    )}
+                    
                     <h3 className="font-bold text-gray-800 text-lg">{mat.title}</h3>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     {mat.type === 'Tugas' && mat.deadline && (
                       <span className="text-xs font-bold bg-orange-50 text-orange-600 px-2 py-1 rounded-md flex items-center gap-1">
                         <Clock size={12}/> Deadline: {new Date(mat.deadline).toLocaleDateString('id-ID')}
@@ -240,6 +297,15 @@ function CourseDetailContent() {
                   </div>
                 </div>
                 {mat.content && <p className="text-sm text-gray-600 mt-2 whitespace-pre-wrap">{mat.content}</p>}
+                
+                {/* Info Kelompok */}
+                {mat.task_type === 'Kelompok' && mat.group_name && (
+                  <div className="mt-3 bg-orange-50 border border-orange-100 p-3 rounded-xl">
+                    <p className="text-xs font-bold text-orange-800 flex items-center gap-1.5"><Users size={14} /> {mat.group_name}</p>
+                    <p className="text-xs text-orange-600 mt-1">Anggota: {mat.group_members || '-'}</p>
+                  </div>
+                )}
+
                 {mat.file_url && (
                   <a href={mat.file_url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-2 rounded-lg text-sm font-medium text-[#1E3A5F] transition-colors">
                     <Download size={16} /> Download Lampiran

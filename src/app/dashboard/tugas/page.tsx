@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, Clock, Download, CheckCircle2, Circle, BookOpen, Search, AlertTriangle, ListTodo } from 'lucide-react'
+import { ArrowLeft, Clock, Download, CheckCircle2, Circle, BookOpen, Search, AlertTriangle, ListTodo, Pencil, Trash2, X, Users, User as UserIcon } from 'lucide-react'
 import Link from 'next/link'
 
 type Task = {
@@ -14,6 +14,9 @@ type Task = {
   deadline: string
   status: string
   file_url: string
+  task_type: string
+  group_name: string
+  group_members: string
   courses: { name: string }
 }
 
@@ -21,15 +24,22 @@ function TaskListContent() {
   const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('Semua') // Semua, Belum Selesai, Selesai
+  const [filter, setFilter] = useState('Semua')
   const [search, setSearch] = useState('')
+
+  // State untuk Modal Edit
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDeadline, setEditDeadline] = useState('')
+  const [editStatus, setEditStatus] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const fetchTasks = async () => {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return router.push('/')
 
-    // Ambil semua materials yang tipenya 'Tugas' atau 'Ujian' milik user ini
     const { data, error } = await supabase
       .from('materials')
       .select('*, courses(name)')
@@ -45,14 +55,63 @@ function TaskListContent() {
     fetchTasks()
   }, [router])
 
+  // Fungsi Tandai Selesai (Ceklis)
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'Selesai' ? 'Belum Selesai' : 'Selesai'
-    
-    // Ubah UI langsung (Optimistic Update)
     setTasks(tasks.map(t => t.id === id ? { ...t, status: newStatus } : t))
-
-    // Simpan ke database
     await supabase.from('materials').update({ status: newStatus }).eq('id', id)
+  }
+
+  // Fungsi Buka Modal Edit
+  const openEditModal = (task: Task) => {
+    setEditingTask(task)
+    setEditTitle(task.title)
+    setEditDeadline(task.deadline || '')
+    setEditStatus(task.status)
+    setIsEditModalOpen(true)
+  }
+
+  // Fungsi Simpan Edit
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTask) return
+    setSavingEdit(true)
+    
+    const { error } = await supabase
+      .from('materials')
+      .update({ 
+        title: editTitle, 
+        deadline: editDeadline || null, 
+        status: editStatus 
+      })
+      .eq('id', editingTask.id)
+
+    if (!error) {
+      setIsEditModalOpen(false)
+      fetchTasks() // Refresh data
+    } else {
+      alert('Gagal mengedit: ' + error.message)
+    }
+    setSavingEdit(false)
+  }
+
+  // Fungsi Hapus Tugas
+  const handleDelete = async (id: string, fileUrl: string) => {
+    if (!window.confirm('Yakin ingin menghapus tugas ini?')) return
+
+    // Hapus file dari storage jika ada
+    if (fileUrl && fileUrl.includes('/storage/v1/object/public/')) {
+      const fileName = fileUrl.split('/').pop()
+      if (fileName) await supabase.storage.from('materials').remove([fileName])
+    }
+
+    // Hapus dari database
+    const { error } = await supabase.from('materials').delete().eq('id', id)
+    if (!error) {
+      fetchTasks()
+    } else {
+      alert('Gagal menghapus: ' + error.message)
+    }
   }
 
   const filteredTasks = tasks.filter(task => {
@@ -102,7 +161,7 @@ function TaskListContent() {
               placeholder="Cari tugas atau mata kuliah..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl text-sm text-gray-800 bg-white focus:ring-2 focus:ring-[#4A90D9] outline-none transition-all"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl text-sm text-gray-800 bg-white placeholder-gray-400 focus:ring-2 focus:ring-[#4A90D9] outline-none transition-all"
             />
           </div>
           <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
@@ -139,9 +198,19 @@ function TaskListContent() {
               const isDone = task.status === 'Selesai'
 
               return (
-                <div key={task.id} className={`bg-white p-5 rounded-2xl shadow-sm border transition-all duration-300 ${isDone ? 'border-green-100 opacity-60' : overdue ? 'border-red-200 shadow-red-100/50' : 'border-gray-100 hover:border-[#4A90D9] hover:shadow-md'}`}>
-                  <div className="flex gap-4 items-start">
-                    
+                <div key={task.id} className={`bg-white p-5 rounded-2xl shadow-sm border transition-all duration-300 relative group ${isDone ? 'border-green-100 opacity-60' : overdue ? 'border-red-200 shadow-red-100/50' : 'border-gray-100 hover:border-[#4A90D9] hover:shadow-md'}`}>
+                  
+                  {/* Tombol Aksi (Edit & Hapus) */}
+                  <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button onClick={() => openEditModal(task)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors" title="Edit Tugas">
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => handleDelete(task.id, task.file_url)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Hapus Tugas">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  <div className="flex gap-4 items-start pr-16">
                     {/* Tombol Checkbox Selesai */}
                     <button 
                       onClick={() => toggleStatus(task.id, task.status)}
@@ -156,9 +225,16 @@ function TaskListContent() {
                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${task.type === 'Ujian' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-[#1E3A5F]'}`}>
                           {task.type}
                         </span>
+
+                        {/* Badge Individu/Kelompok */}
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${task.task_type === 'Kelompok' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                          {task.task_type || 'Individu'}
+                        </span>
+
                         <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
                           {task.courses?.name || 'Mata Kuliah Terhapus'}
                         </span>
+
                         {overdue && (
                           <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-1 rounded-md flex items-center gap-1">
                             <AlertTriangle size={12} /> Terlewat
@@ -169,6 +245,14 @@ function TaskListContent() {
                       <h3 className={`text-lg font-bold transition-colors ${isDone ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
                         {task.title}
                       </h3>
+
+                      {/* Info Kelompok (Jika Ada) */}
+                      {task.task_type === 'Kelompok' && task.group_name && (
+                        <div className="mt-2 bg-orange-50 border border-orange-100 px-3 py-2 rounded-lg inline-block w-full max-w-md">
+                          <p className="text-xs font-bold text-orange-800 flex items-center gap-1.5"><Users size={14} /> {task.group_name}</p>
+                          <p className="text-[11px] text-orange-600 mt-0.5">Anggota: {task.group_members || '-'}</p>
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-5 mt-3 text-sm">
                         <span className={`flex items-center gap-1.5 font-bold ${overdue ? 'text-red-500' : isDone ? 'text-gray-400' : 'text-orange-500'}`}>
@@ -190,6 +274,57 @@ function TaskListContent() {
           </div>
         )}
       </div>
+
+      {/* Modal Edit Tugas */}
+      {isEditModalOpen && editingTask && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg text-gray-800">Edit Tugas</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-red-500"><X size={20}/></button>
+            </div>
+            
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Judul Tugas</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={editTitle} 
+                  onChange={e => setEditTitle(e.target.value)} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-800 focus:ring-2 focus:ring-[#4A90D9] outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Deadline</label>
+                <input 
+                  type="date" 
+                  value={editDeadline} 
+                  onChange={e => setEditDeadline(e.target.value)} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm text-gray-800 focus:ring-2 focus:ring-[#4A90D9] outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Status</label>
+                <select 
+                  value={editStatus} 
+                  onChange={e => setEditStatus(e.target.value)} 
+                  className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm bg-white text-gray-800 focus:ring-2 focus:ring-[#4A90D9] outline-none"
+                >
+                  <option value="Belum Selesai">Belum Selesai</option>
+                  <option value="Selesai">Selesai</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Batal</button>
+                <button type="submit" disabled={savingEdit} className="px-5 py-2 text-sm bg-[#1E3A5F] hover:bg-[#2E5A8A] text-white font-bold rounded-lg disabled:opacity-50">
+                  {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
