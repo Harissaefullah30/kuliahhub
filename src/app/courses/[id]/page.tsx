@@ -3,8 +3,14 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, Plus, Download, BookOpen, Trash2, Pencil, X, Save, Clock, Users, User as UserIcon } from 'lucide-react'
+import { ArrowLeft, Plus, Download, BookOpen, Trash2, Pencil, X, Save, Clock, Users, User as UserIcon, ListTodo, GripVertical } from 'lucide-react'
 import Link from 'next/link'
+
+type Subtask = {
+  id: string
+  name: string
+  done: boolean
+}
 
 type Material = {
   id: string
@@ -18,6 +24,7 @@ type Material = {
   task_type: string
   group_name: string
   group_members: string
+  subtasks: Subtask[]
 }
 
 function CourseDetailContent() {
@@ -42,6 +49,12 @@ function CourseDetailContent() {
   const [taskType, setTaskType] = useState('Individu')
   const [groupName, setGroupName] = useState('')
   const [groupMembers, setGroupMembers] = useState('')
+
+  // State untuk Tahapan (Subtasks)
+  const [subtasks, setSubtasks] = useState<Subtask[]>([])
+  const [newSubtaskName, setNewSubtaskName] = useState('')
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
+  const [editingSubtaskName, setEditingSubtaskName] = useState('')
 
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -77,6 +90,8 @@ function CourseDetailContent() {
     setTaskType('Individu')
     setGroupName('')
     setGroupMembers('')
+    setSubtasks([])
+    setNewSubtaskName('')
     setFile(null)
   }
 
@@ -90,8 +105,35 @@ function CourseDetailContent() {
     setTaskType(mat.task_type || 'Individu')
     setGroupName(mat.group_name || '')
     setGroupMembers(mat.group_members || '')
+    setSubtasks(mat.subtasks || [])
+    setNewSubtaskName('')
     setFile(null)
     setIsFormOpen(true)
+  }
+
+  // Fungsi Tambah Tahapan
+  const handleAddSubtask = () => {
+    if (!newSubtaskName.trim()) return
+    const newSubtask: Subtask = {
+      id: Date.now().toString(),
+      name: newSubtaskName.trim(),
+      done: false
+    }
+    setSubtasks([...subtasks, newSubtask])
+    setNewSubtaskName('')
+  }
+
+  // Fungsi Hapus Tahapan
+  const handleDeleteSubtask = (id: string) => {
+    setSubtasks(subtasks.filter(st => st.id !== id))
+  }
+
+  // Fungsi Simpan Edit Tahapan
+  const handleSaveEditSubtask = (id: string) => {
+    if (!editingSubtaskName.trim()) return
+    setSubtasks(subtasks.map(st => st.id === id ? { ...st, name: editingSubtaskName.trim() } : st))
+    setEditingSubtaskId(null)
+    setEditingSubtaskName('')
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -124,7 +166,8 @@ function CourseDetailContent() {
         title, type, content, deadline: deadline || null, status,
         task_type: (type === 'Tugas' || type === 'Ujian') ? taskType : null,
         group_name: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupName : null,
-        group_members: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupMembers : null
+        group_members: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupMembers : null,
+        subtasks: (type === 'Tugas' || type === 'Ujian') ? subtasks : []
       }
       if (fileUrl) updateData.file_url = fileUrl
 
@@ -136,7 +179,8 @@ function CourseDetailContent() {
         course_id: courseId, user_id: user.id, title, type, content, deadline: deadline || null, status, file_url: fileUrl || '',
         task_type: (type === 'Tugas' || type === 'Ujian') ? taskType : null,
         group_name: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupName : null,
-        group_members: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupMembers : null
+        group_members: (type === 'Tugas' || type === 'Ujian') && taskType === 'Kelompok' ? groupMembers : null,
+        subtasks: (type === 'Tugas' || type === 'Ujian') ? subtasks : []
       })
       if (!error) { closeForm(); fetchCourseAndMaterials() } else { alert('Gagal: ' + error.message) }
     }
@@ -197,7 +241,7 @@ function CourseDetailContent() {
               
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Catatan (Opsional)</label>
-                <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Tulis catatan..." rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white"></textarea>
+                <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Tulis catatan..." rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-800 bg-white"></textarea>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -237,6 +281,54 @@ function CourseDetailContent() {
                       </div>
                     </div>
                   )}
+
+                  {/* FORM TAMBAHAN: Tahapan Pengerjaan */}
+                  <div className="pt-2 border-t border-blue-200/50 mt-2">
+                    <label className="block text-xs font-bold text-gray-700 mb-2 flex items-center gap-1.5"><ListTodo size={14}/> Tahapan Pengerjaan (Opsional)</label>
+                    
+                    <div className="flex gap-2 mb-3">
+                      <input 
+                        type="text" 
+                        value={newSubtaskName} 
+                        onChange={e => setNewSubtaskName(e.target.value)} 
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubtask(); } }}
+                        placeholder="Ketik tahapan baru (misal: Cari referensi)" 
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-800" 
+                      />
+                      <button type="button" onClick={handleAddSubtask} className="px-3 py-2 bg-[#4A90D9] hover:bg-blue-600 text-white rounded-lg text-sm font-bold transition-colors">
+                        Tambah
+                      </button>
+                    </div>
+
+                    {subtasks.length > 0 && (
+                      <div className="space-y-2 bg-white p-3 rounded-lg border border-gray-200">
+                        {subtasks.map((st, index) => (
+                          <div key={st.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-md border border-gray-100 group">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-xs font-bold text-gray-400 w-4">{index + 1}.</span>
+                              {editingSubtaskId === st.id ? (
+                                <input 
+                                  autoFocus
+                                  type="text" 
+                                  value={editingSubtaskName} 
+                                  onChange={e => setEditingSubtaskName(e.target.value)}
+                                  onBlur={() => handleSaveEditSubtask(st.id)}
+                                  onKeyDown={e => { if (e.key === 'Enter') handleSaveEditSubtask(st.id); if(e.key === 'Escape') setEditingSubtaskId(null) }}
+                                  className="flex-1 px-2 py-1 border border-blue-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              ) : (
+                                <span className="text-sm text-gray-700">{st.name}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button type="button" onClick={() => { setEditingSubtaskId(st.id); setEditingSubtaskName(st.name); }} className="p-1 text-gray-400 hover:text-blue-500 rounded"><Pencil size={14}/></button>
+                              <button type="button" onClick={() => handleDeleteSubtask(st.id)} className="p-1 text-gray-400 hover:text-red-500 rounded"><Trash2 size={14}/></button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -272,20 +364,17 @@ function CourseDetailContent() {
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${mat.type === 'Tugas' ? 'bg-red-50 text-red-600' : mat.type === 'Ujian' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-[#1E3A5F]'}`}>
                       {mat.type}
                     </span>
-                    
-                    {/* Badge Individu/Kelompok */}
                     {(mat.type === 'Tugas' || mat.type === 'Ujian') && (
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${mat.task_type === 'Kelompok' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
                         {mat.task_type || 'Individu'}
                       </span>
                     )}
-                    
                     <h3 className="font-bold text-gray-800 text-lg">{mat.title}</h3>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {mat.type === 'Tugas' && mat.deadline && (
                       <span className="text-xs font-bold bg-orange-50 text-orange-600 px-2 py-1 rounded-md flex items-center gap-1">
-                        <Clock size={12}/> Deadline: {new Date(mat.deadline).toLocaleDateString('id-ID')}
+                        <Clock size={12}/> {new Date(mat.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                       </span>
                     )}
                     <button onClick={() => openEditForm(mat)} className="text-gray-400 hover:text-blue-500 p-1 bg-gray-50 hover:bg-blue-50 rounded-md">
@@ -307,9 +396,27 @@ function CourseDetailContent() {
                 )}
 
                 {mat.file_url && (
-                  <a href={mat.file_url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-2 rounded-lg text-sm font-medium text-[#1E3A5F] transition-colors">
-                    <Download size={16} /> Download Lampiran
+                  <a href={mat.file_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg text-xs font-medium text-[#1E3A5F] transition-colors">
+                    <Download size={14} /> Download Lampiran
                   </a>
+                )}
+
+                {/* Info Progres Tahapan (Jika ada) */}
+                {mat.subtasks && mat.subtasks.length > 0 && (
+                  <div className="mt-4 border-t border-gray-100 pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-gray-500 flex items-center gap-1.5"><ListTodo size={14}/> Progres Tahapan</span>
+                      <span className="text-xs font-bold text-[#1E3A5F]">
+                        {Math.round((mat.subtasks.filter(st => st.done).length / mat.subtasks.length) * 100)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mb-3">
+                      <div 
+                        className="bg-[#4A90D9] h-1.5 rounded-full transition-all duration-500" 
+                        style={{ width: `${(mat.subtasks.filter(st => st.done).length / mat.subtasks.length) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 )}
               </div>
             ))}

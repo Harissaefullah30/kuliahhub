@@ -3,8 +3,14 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { ArrowLeft, Clock, Download, CheckCircle2, Circle, BookOpen, Search, AlertTriangle, ListTodo, Pencil, Trash2, X, Users, User as UserIcon } from 'lucide-react'
+import { ArrowLeft, Clock, Download, CheckCircle2, Circle, BookOpen, Search, AlertTriangle, ListTodo, Pencil, Trash2, X, Users, CheckSquare, Square, Plus } from 'lucide-react'
 import Link from 'next/link'
+
+type Subtask = {
+  id: string
+  name: string
+  done: boolean
+}
 
 type Task = {
   id: string
@@ -17,6 +23,7 @@ type Task = {
   task_type: string
   group_name: string
   group_members: string
+  subtasks: Subtask[]
   courses: { name: string }
 }
 
@@ -27,13 +34,17 @@ function TaskListContent() {
   const [filter, setFilter] = useState('Semua')
   const [search, setSearch] = useState('')
 
-  // State untuk Modal Edit
+  // State untuk Modal Edit Tugas
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDeadline, setEditDeadline] = useState('')
   const [editStatus, setEditStatus] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
+
+  // State untuk Edit Tahapan langsung di halaman tugas
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null)
+  const [editingSubtaskName, setEditingSubtaskName] = useState('')
 
   const fetchTasks = async () => {
     setLoading(true)
@@ -55,14 +66,60 @@ function TaskListContent() {
     fetchTasks()
   }, [router])
 
-  // Fungsi Tandai Selesai (Ceklis)
+  // Fungsi Tandai Selesai Tugas Utama
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'Selesai' ? 'Belum Selesai' : 'Selesai'
     setTasks(tasks.map(t => t.id === id ? { ...t, status: newStatus } : t))
     await supabase.from('materials').update({ status: newStatus }).eq('id', id)
   }
 
-  // Fungsi Buka Modal Edit
+  // Fungsi Toggle Checklist Tahapan
+  const toggleSubtask = async (taskId: string, subtaskId: string) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task || !task.subtasks) return
+
+    // Ubah status done pada subtask yang diklik
+    const updatedSubtasks = task.subtasks.map(st => 
+      st.id === subtaskId ? { ...st, done: !st.done } : st
+    )
+
+    // Hitung apakah semua subtask sudah selesai
+    const allDone = updatedSubtasks.every(st => st.done)
+    const newStatus = allDone ? 'Selesai' : 'Belum Selesai'
+
+    // Update UI (Optimistic)
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, subtasks: updatedSubtasks, status: newStatus } : t))
+
+    // Simpan ke Database
+    await supabase.from('materials').update({ subtasks: updatedSubtasks, status: newStatus }).eq('id', taskId)
+  }
+
+  // Fungsi Hapus Subtask
+  const deleteSubtask = async (taskId: string, subtaskId: string) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (!task || !task.subtasks) return
+
+    const updatedSubtasks = task.subtasks.filter(st => st.id !== subtaskId)
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, subtasks: updatedSubtasks } : t))
+    await supabase.from('materials').update({ subtasks: updatedSubtasks }).eq('id', taskId)
+  }
+
+  // Fungsi Simpan Edit Subtask
+  const saveEditSubtask = async (taskId: string, subtaskId: string) => {
+    if (!editingSubtaskName.trim()) return
+    const task = tasks.find(t => t.id === taskId)
+    if (!task || !task.subtasks) return
+
+    const updatedSubtasks = task.subtasks.map(st => 
+      st.id === subtaskId ? { ...st, name: editingSubtaskName.trim() } : st
+    )
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, subtasks: updatedSubtasks } : t))
+    setEditingSubtaskId(null)
+    setEditingSubtaskName('')
+    await supabase.from('materials').update({ subtasks: updatedSubtasks }).eq('id', taskId)
+  }
+
+  // Fungsi Buka Modal Edit Tugas Utama
   const openEditModal = (task: Task) => {
     setEditingTask(task)
     setEditTitle(task.title)
@@ -71,7 +128,7 @@ function TaskListContent() {
     setIsEditModalOpen(true)
   }
 
-  // Fungsi Simpan Edit
+  // Fungsi Simpan Edit Tugas Utama
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingTask) return
@@ -88,24 +145,22 @@ function TaskListContent() {
 
     if (!error) {
       setIsEditModalOpen(false)
-      fetchTasks() // Refresh data
+      fetchTasks()
     } else {
       alert('Gagal mengedit: ' + error.message)
     }
     setSavingEdit(false)
   }
 
-  // Fungsi Hapus Tugas
+  // Fungsi Hapus Tugas Utama
   const handleDelete = async (id: string, fileUrl: string) => {
     if (!window.confirm('Yakin ingin menghapus tugas ini?')) return
 
-    // Hapus file dari storage jika ada
     if (fileUrl && fileUrl.includes('/storage/v1/object/public/')) {
       const fileName = fileUrl.split('/').pop()
       if (fileName) await supabase.storage.from('materials').remove([fileName])
     }
 
-    // Hapus dari database
     const { error } = await supabase.from('materials').delete().eq('id', id)
     if (!error) {
       fetchTasks()
@@ -147,7 +202,7 @@ function TaskListContent() {
               <h1 className="text-2xl font-bold text-[#1E3A5F] flex items-center gap-2">
                 <ListTodo className="text-[#4A90D9]" /> Daftar Tugas & Ujian
               </h1>
-              <p className="text-sm text-gray-500">Pantau semua tenggat waktu kamu di sini.</p>
+              <p className="text-sm text-gray-500">Pantau semua tenggat waktu dan progres kamu di sini.</p>
             </div>
           </div>
         </div>
@@ -196,11 +251,16 @@ function TaskListContent() {
             {filteredTasks.map(task => {
               const overdue = isOverdue(task.deadline, task.status)
               const isDone = task.status === 'Selesai'
+              
+              // Hitung progres subtask
+              const totalSubtasks = task.subtasks?.length || 0
+              const doneSubtasks = task.subtasks?.filter(st => st.done).length || 0
+              const progressPercent = totalSubtasks === 0 ? 0 : Math.round((doneSubtasks / totalSubtasks) * 100)
 
               return (
                 <div key={task.id} className={`bg-white p-5 rounded-2xl shadow-sm border transition-all duration-300 relative group ${isDone ? 'border-green-100 opacity-60' : overdue ? 'border-red-200 shadow-red-100/50' : 'border-gray-100 hover:border-[#4A90D9] hover:shadow-md'}`}>
                   
-                  {/* Tombol Aksi (Edit & Hapus) */}
+                  {/* Tombol Aksi (Edit & Hapus Tugas Utama) */}
                   <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <button onClick={() => openEditModal(task)} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors" title="Edit Tugas">
                       <Pencil size={16} />
@@ -211,7 +271,7 @@ function TaskListContent() {
                   </div>
 
                   <div className="flex gap-4 items-start pr-16">
-                    {/* Tombol Checkbox Selesai */}
+                    {/* Tombol Checkbox Tugas Utama */}
                     <button 
                       onClick={() => toggleStatus(task.id, task.status)}
                       className={`mt-1 shrink-0 transition-transform hover:scale-110 ${isDone ? 'text-green-500' : 'text-gray-300 hover:text-[#4A90D9]'}`}
@@ -225,16 +285,12 @@ function TaskListContent() {
                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${task.type === 'Ujian' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-[#1E3A5F]'}`}>
                           {task.type}
                         </span>
-
-                        {/* Badge Individu/Kelompok */}
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${task.task_type === 'Kelompok' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
                           {task.task_type || 'Individu'}
                         </span>
-
                         <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
                           {task.courses?.name || 'Mata Kuliah Terhapus'}
                         </span>
-
                         {overdue && (
                           <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-1 rounded-md flex items-center gap-1">
                             <AlertTriangle size={12} /> Terlewat
@@ -246,7 +302,7 @@ function TaskListContent() {
                         {task.title}
                       </h3>
 
-                      {/* Info Kelompok (Jika Ada) */}
+                      {/* Info Kelompok */}
                       {task.task_type === 'Kelompok' && task.group_name && (
                         <div className="mt-2 bg-orange-50 border border-orange-100 px-3 py-2 rounded-lg inline-block w-full max-w-md">
                           <p className="text-xs font-bold text-orange-800 flex items-center gap-1.5"><Users size={14} /> {task.group_name}</p>
@@ -266,6 +322,62 @@ function TaskListContent() {
                           </a>
                         )}
                       </div>
+
+                      {/* BAGIAN SUBTASKS (TAHAPAN) */}
+                      {totalSubtasks > 0 && (
+                        <div className="mt-4 bg-gray-50 rounded-xl p-4 border border-gray-100">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-gray-600 flex items-center gap-1.5">
+                              <ListTodo size={14} className="text-[#4A90D9]" /> Progres Tahapan
+                            </span>
+                            <span className="text-xs font-extrabold text-[#1E3A5F]">{progressPercent}%</span>
+                          </div>
+                          
+                          {/* Progress Bar */}
+                          <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                            <div 
+                              className={`h-2 rounded-full transition-all duration-500 ${progressPercent === 100 ? 'bg-green-500' : 'bg-[#4A90D9]'}`}
+                              style={{ width: `${progressPercent}%` }}
+                            ></div>
+                          </div>
+
+                          {/* List Subtasks */}
+                          <div className="space-y-2">
+                            {task.subtasks.map((st, index) => (
+                              <div key={st.id} className="flex items-start gap-2 group/sub">
+                                <button onClick={() => toggleSubtask(task.id, st.id)} className={`mt-0.5 shrink-0 transition-colors ${st.done ? 'text-green-500' : 'text-gray-400 hover:text-[#4A90D9]'}`}>
+                                  {st.done ? <CheckSquare size={16} /> : <Square size={16} />}
+                                </button>
+                                
+                                <div className="flex-1">
+                                  {editingSubtaskId === st.id ? (
+                                    <input 
+                                      autoFocus
+                                      type="text" 
+                                      value={editingSubtaskName} 
+                                      onChange={e => setEditingSubtaskName(e.target.value)}
+                                      onBlur={() => saveEditSubtask(task.id, st.id)}
+                                      onKeyDown={e => { if (e.key === 'Enter') saveEditSubtask(task.id, st.id); if(e.key === 'Escape') setEditingSubtaskId(null) }}
+                                      className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
+                                  ) : (
+                                    <span className={`text-sm ${st.done ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                                      <span className="text-[10px] font-bold text-gray-400 mr-1.5">{index + 1}.</span>
+                                      {st.name}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-opacity">
+                                  <button onClick={() => { setEditingSubtaskId(st.id); setEditingSubtaskName(st.name); }} className="p-1 text-gray-400 hover:text-blue-500 rounded"><Pencil size={12}/></button>
+                                  <button onClick={() => deleteSubtask(task.id, st.id)} className="p-1 text-gray-400 hover:text-red-500 rounded"><Trash2 size={12}/></button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </div>
                 </div>
@@ -275,7 +387,7 @@ function TaskListContent() {
         )}
       </div>
 
-      {/* Modal Edit Tugas */}
+      {/* Modal Edit Tugas Utama */}
       {isEditModalOpen && editingTask && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95">

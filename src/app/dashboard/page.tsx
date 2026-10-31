@@ -145,18 +145,7 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] pb-12">
-      <nav className="bg-[#1E3A5F] text-white shadow-lg sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 md:px-8 h-16 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-white text-[#1E3A5F] w-9 h-9 rounded-xl flex items-center justify-center shadow-md"><GraduationCap size={20} /></div>
-            <span className="font-bold text-xl tracking-wide">KuliahHub</span>
-          </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-lg transition-all">
-            <LogOut size={16} /> Keluar
-          </button>
-        </div>
-      </nav>
-
+      
       <div className="max-w-5xl mx-auto px-4 md:px-8 pt-8">
         
         {/* WIDGET JAM & TANGGAL REAL-TIME */}
@@ -403,92 +392,87 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Tombol Cepat (4 Kolom Sejajar) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          
-          {/* Tombol 1: Tambah MK */}
-          <Link href="/courses/add" className="group relative overflow-hidden bg-gradient-to-br from-[#1E3A5F] to-[#2E5A8A] text-white p-4 rounded-2xl shadow-[0_8px_30px_rgb(30,58,95,0.3)] hover:shadow-[0_8px_30px_rgb(30,58,95,0.5)] flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
-            <div className="bg-white/20 p-2.5 rounded-full group-hover:scale-110 transition-transform duration-300"><Plus size={22} /></div>
-            <span className="font-bold text-sm tracking-wide z-10">Tambah MK</span>
-          </Link>
-
-          {/* Tombol 2: Lihat Tugas */}
-          <Link href="/dashboard/tugas" className="group relative overflow-hidden bg-white border border-gray-200 hover:border-[#1E3A5F] text-[#1E3A5F] p-4 rounded-2xl shadow-lg hover:shadow-xl flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
-             <div className="bg-blue-50 p-2.5 rounded-full group-hover:bg-[#1E3A5F] group-hover:text-white transition-colors duration-300 group-hover:rotate-6"><ListTodo size={22} /></div>
-            <span className="font-bold text-sm tracking-wide">Lihat Tugas</span>
-          </Link>
-
-          {/* Tombol 3: Pusat Referensi (BARU) */}
-          <Link href="/dashboard/referensi" className="group relative overflow-hidden bg-white border border-gray-200 hover:border-[#1E3A5F] text-[#1E3A5F] p-4 rounded-2xl shadow-lg hover:shadow-xl flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
-             <div className="bg-indigo-50 text-indigo-600 p-2.5 rounded-full group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
-              <LinkIcon size={22} />
+                {/* Header Daftar Mata Kuliah yang Lebih Ringkas */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="bg-[#1E3A5F] p-2 rounded-lg text-white shadow-sm">
+              <FolderOpen size={18} />
             </div>
-            <span className="font-bold text-sm tracking-wide">Pusat Referensi</span>
-          </Link>
-
-          {/* Tombol 4: Ruang Skripsi */}
-          <Link href="/thesis" className="group relative overflow-hidden bg-white border border-gray-200 hover:border-[#1E3A5F] text-[#1E3A5F] p-4 rounded-2xl shadow-lg hover:shadow-xl flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 hover:-translate-y-1 active:translate-y-0 active:scale-95">
-             <div className="bg-blue-50 p-2.5 rounded-full group-hover:bg-[#1E3A5F] group-hover:text-white transition-colors duration-300">
-              <GraduationCap size={22} />
+            <div>
+              <h2 className="text-xl font-bold text-[#1E3A5F]">Materi & Tugas Kuliah</h2>
+              <p className="text-xs text-gray-500">Total {courses.length} mata kuliah terdaftar.</p>
             </div>
-            <span className="font-bold text-sm tracking-wide">Ruang Skripsi</span>
-          </Link>
+          </div>
           
-        </div>
-
-        {/* List Mata Kuliah */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-[#1E3A5F]">Materi & Tugas Kuliah</h1>
-            <p className="text-gray-500 text-sm mt-1">Kelola semua materi dan tugas perkuliahanmu di sini.</p>
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Cari Mata Kuliah atau Dosen..." 
+              value={searchQuery} 
+              onChange={e => setSearchQuery(e.target.value)} 
+              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-[#4A90D9] outline-none transition-all shadow-sm" 
+            />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex items-center gap-3">
-          <Search size={18} className="text-gray-400" />
-          <input type="text" placeholder="Cari Mata Kuliah atau Dosen..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="bg-transparent border-none outline-none w-full text-sm text-gray-700 placeholder-gray-400" />
-        </div>
 
-        {/* Tampilan Folder Semester */}
+              {/* Tampilan Folder Semester (Compact & Grid) */}
         {loading ? (
-          <p className="text-center text-gray-500">Memuat data...</p>
+          <p className="text-center text-gray-500 py-10 text-sm">Memuat data...</p>
         ) : sortedSemesters.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
-            <BookOpen size={40} className="mx-auto text-gray-300 mb-3" />
-            <h3 className="text-lg font-bold text-gray-700">Belum ada Mata Kuliah</h3>
-            <p className="text-gray-500 text-sm">Klik "Tambah MK" di pengaturan untuk memulai.</p>
+          <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 border-dashed">
+            <BookOpen size={32} className="mx-auto text-gray-300 mb-3" />
+            <h3 className="text-base font-bold text-gray-700">Belum ada Mata Kuliah</h3>
+            <p className="text-gray-500 text-xs mt-1">Klik "Tambah MK" untuk memulai.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {sortedSemesters.map(sem => {
               const isOpen = openSemesters.includes(sem) || searchQuery.length > 0
               return (
-                <div key={sem} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                  <button onClick={() => toggleSemester(sem)} className="w-full bg-gradient-to-r from-[#1E3A5F] to-[#2E5A8A] p-4 flex items-center justify-between cursor-pointer">
-                    <div className="flex items-center gap-3 text-white">
-                      <FolderOpen size={20} className="text-yellow-300" />
-                      <h2 className="font-bold text-lg">Semester {sem}</h2>
-                    </div>
+                <div key={sem} className="bg-transparent">
+                  {/* Header Semester (Lebih tipis dan elegan) */}
+                  <button 
+                    onClick={() => toggleSemester(sem)} 
+                    className="w-full flex items-center justify-between py-2 px-1 mb-3 border-b border-gray-200 group"
+                  >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-semibold bg-white/20 text-white px-3 py-1 rounded-full">{groupedCourses[sem].length} Mata Kuliah</span>
-                      {isOpen ? <ChevronUp size={20} className="text-white" /> : <ChevronDown size={20} className="text-white" />}
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isOpen ? 'bg-[#1E3A5F] text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'}`}>
+                        <FolderOpen size={16} />
+                      </div>
+                      <h3 className="font-bold text-gray-800 text-lg">Semester {sem}</h3>
+                      <span className="text-xs font-semibold bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-full">{groupedCourses[sem].length} MK</span>
+                    </div>
+                    <div className="text-gray-400 group-hover:text-[#1E3A5F] transition-colors">
+                      {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </div>
                   </button>
 
+                  {/* Grid Kartu Mata Kuliah (Lebih Kecil & Padat) */}
                   {isOpen && (
-                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-2">
                       {groupedCourses[sem].map((mk) => (
-                        <div key={mk.id} className="p-4 rounded-xl border border-gray-100 hover:border-[#4A90D9] hover:bg-blue-50/30 transition-all group flex flex-col justify-between">
+                        <Link 
+                          href={`/courses/${mk.id}`} 
+                          key={mk.id} 
+                          className="bg-white p-4 rounded-xl border border-gray-100 hover:border-[#4A90D9] hover:shadow-md transition-all group flex flex-col justify-between min-h-[110px]"
+                        >
                           <div>
-                            <h3 className="font-bold text-gray-800 text-base mb-1 group-hover:text-[#1E3A5F] transition-colors">{mk.name}</h3>
-                            <p className="text-sm text-gray-500 flex items-center gap-1.5"><User size={14} /> {mk.lecturer || 'Dosen belum diisi'}</p>
+                            <h4 className="font-bold text-gray-800 text-sm leading-snug mb-1 group-hover:text-[#1E3A5F] transition-colors line-clamp-2">
+                              {mk.name}
+                            </h4>
+                            <p className="text-[11px] text-gray-500 flex items-center gap-1.5 mt-1">
+                              <User size={12} /> {mk.lecturer || 'Dosen belum diisi'}
+                            </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-gray-50 flex justify-end">
-                            <Link href={`/courses/${mk.id}`} className="text-xs font-bold text-[#4A90D9] bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1">
-                              <FileText size={14} /> Lihat Tugas & Materi
-                            </Link>
+                          
+                          <div className="mt-3 pt-2.5 border-t border-gray-50 flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-[#4A90D9] bg-blue-50 px-2 py-1 rounded-md flex items-center gap-1 group-hover:bg-[#1E3A5F] group-hover:text-white transition-colors">
+                              <FileText size={12} /> Lihat Detail
+                            </span>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   )}
@@ -497,6 +481,7 @@ function DashboardContent() {
             })}
           </div>
         )}
+
       </div>
     </div>
   )
